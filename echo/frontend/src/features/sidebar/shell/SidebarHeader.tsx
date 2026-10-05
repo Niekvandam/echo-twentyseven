@@ -15,7 +15,7 @@ export const SidebarHeader = () => {
 			<I18nLink
 				to="/o"
 				className="flex items-center gap-2 transition-opacity hover:opacity-80"
-				aria-label="dembrane home"
+				aria-label="Twentyseven home"
 			>
 				<Logo hideTitle={false} />
 			</I18nLink>

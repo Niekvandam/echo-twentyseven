@@ -7,11 +7,16 @@
 //
 // To add or move a deployment, edit ENV_HOSTNAMES. Loopback hosts and dev
 // builds resolve to "local". Anything else unmatched (Vercel preview URLs,
-// LAN IPs, ...) falls back to "next": production must be an explicit match so
-// stray hosts can never capture into prod analytics or mutate prod data.
+// LAN IPs, ...) use the Twentyseven same-origin proxies. Original Dembrane
+// deployments require an explicit hostname match.
 // ---------------------------------------------------------------------------
 
-export type AppEnvironment = "production" | "next" | "testing" | "local";
+export type AppEnvironment =
+	| "production"
+	| "next"
+	| "testing"
+	| "local"
+	| "twentyseven";
 
 const ENV_HOSTNAMES: Record<"production" | "next" | "testing", string[]> = {
 	next: ["dashboard.echo-next.dembrane.com", "portal.echo-next.dembrane.com"],
@@ -25,7 +30,7 @@ const ENV_HOSTNAMES: Record<"production" | "next" | "testing", string[]> = {
 const LOCAL_HOSTNAMES = ["localhost", "127.0.0.1", "0.0.0.0"];
 
 export const APP_ENVIRONMENT: AppEnvironment = (() => {
-	if (typeof window === "undefined") return "production";
+	if (typeof window === "undefined") return "twentyseven";
 	const { host, hostname } = window.location;
 	for (const [env, hosts] of Object.entries(ENV_HOSTNAMES)) {
 		if (hosts.includes(host)) return env as AppEnvironment;
@@ -35,7 +40,7 @@ export const APP_ENVIRONMENT: AppEnvironment = (() => {
 	if (LOCAL_HOSTNAMES.includes(hostname) || import.meta.env.DEV) {
 		return "local";
 	}
-	return "next";
+	return "twentyseven";
 })();
 
 export const IS_PRODUCTION = APP_ENVIRONMENT === "production";
@@ -71,30 +76,43 @@ const dembraneHost = (subdomain: string): string =>
 // Deployed portals are portal.* hosts; locally the participant dev server is
 // the one on port 5174 (`pnpm participant:dev`).
 export const USE_PARTICIPANT_ROUTER = Boolean(
-	globalThis.window?.location.hostname.startsWith("portal.") ||
+	import.meta.env.VITE_APP_MODE === "participant" ||
+		globalThis.window?.location.hostname.startsWith(
+			"twentyseven-echo-portal",
+		) ||
+		globalThis.window?.location.hostname.startsWith("portal.") ||
 		globalThis.window?.location.port === "5174",
 );
 
 export const ADMIN_BASE_URL = byEnv(
-	{ local: "http://localhost:5173" },
+	{
+		local: "http://localhost:5173",
+		twentyseven: "https://twentyseven-echo.vercel.app",
+	},
 	dembraneHost("dashboard"),
 );
 
 export const PARTICIPANT_BASE_URL = byEnv(
-	{ local: "http://localhost:5174" },
+	{
+		local: "http://localhost:5174",
+		twentyseven: "https://twentyseven-echo-portal.vercel.app",
+	},
 	dembraneHost("portal"),
 );
 
 // FastAPI mounts its routes under /api; locally the Vite proxy forwards
 // same-origin /api to localhost:8000.
 export const API_BASE_URL = byEnv(
-	{ local: "/api" },
+	{ local: "/api", twentyseven: "/api" },
 	`${dembraneHost("api")}/api`,
 );
 
 export const DIRECTUS_PUBLIC_URL = byEnv(
 	// Local dev goes through the Vite proxy so cookies stay same-origin.
-	{ local: `${globalThis.window?.location.origin ?? ""}/directus` },
+	{
+		local: `${globalThis.window?.location.origin ?? ""}/directus`,
+		twentyseven: `${globalThis.window?.location.origin ?? ""}/directus`,
+	},
 	dembraneHost("directus"),
 );
 
@@ -122,7 +140,10 @@ export const POSTHOG_TOKEN = byEnv(
 	"phc_qMo8i67hwneqDG3x8NW4iTyUiqPMsR9pZ3H5QaJQ4zkM",
 );
 
-export const POSTHOG_CAPTURE = byEnv({ local: false, testing: false }, true);
+export const POSTHOG_CAPTURE = byEnv(
+	{ local: false, testing: false, twentyseven: false },
+	true,
+);
 
 export const SUPPORTED_LANGUAGES = [
 	"en-US",
@@ -167,7 +188,8 @@ export const COMMUNITY_SLACK_URL =
 // the sidebar sent people somewhere the rest of the app had left.
 // Dutch lives at index.nl-NL.html, not README.nl-NL.html; both verified live.
 export const DOCS_URL_EN = "https://docs.dembrane.com/" as const;
-export const DOCS_URL_NL = "https://docs.dembrane.com/index.nl-NL.html" as const;
+export const DOCS_URL_NL =
+	"https://docs.dembrane.com/index.nl-NL.html" as const;
 
 export const getDocumentationUrl = (locale = "en-US") =>
 	locale === "nl-NL" ? DOCS_URL_NL : DOCS_URL_EN;
@@ -185,7 +207,7 @@ export const ENABLE_WEBHOOKS = true;
 // switching this to false would strand them on the legacy chat UI, which posts
 // to /chats/{id} and is rejected for agentic chats. Only flip this off if you
 // also have a story for those chats.
-export const ENABLE_AGENTIC_CHAT = true;
+export const ENABLE_AGENTIC_CHAT = byEnv({ twentyseven: false }, true);
 // Which mode a new chat starts in. False means hosts get Specific Details by
 // default and opt in to Agentic from the Ask entry screen. Linear ECHO-898
 // decides when (and under what name) agentic becomes the default.
@@ -202,7 +224,7 @@ export const ENABLE_MONITOR = true;
 // still opts in through the experimental toggle (project.is_canvas_enabled).
 export const ENABLE_CANVAS = true;
 // The release-video modal. On everywhere now that the video is recorded.
-export const ENABLE_RELEASE_VIDEO_MODAL = true;
+export const ENABLE_RELEASE_VIDEO_MODAL = false;
 
 export const getProductFeedbackUrl = (locale = "en-US") =>
 	`https://portal.dembrane.com/${locale}/a2b7fbeb-af8d-41c8-b70b-9ff1f3c6d51a/start?theme=dm-sans`;
@@ -213,3 +235,7 @@ export const getSecurityReportFormUrl = (locale = "en-US") =>
 	locale.startsWith("nl")
 		? "https://dembrane.notion.site/3ac9cd842705807c8badc71c90be9f01?pvs=105"
 		: "https://dembrane.notion.site/cc3d257b14ea462ca8272c6837278eb0?pvs=105";
+
+// This deployment has one provisioned administrator and no email service.
+export const ENABLE_PUBLIC_REGISTRATION = byEnv({ twentyseven: false }, true);
+export const ENABLE_EMAIL_PASSWORD_RESET = byEnv({ twentyseven: false }, true);

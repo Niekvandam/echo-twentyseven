@@ -15,6 +15,14 @@ const FONT_OPTIONS: {
 	transitionDescription: string;
 }[] = [
 	{
+		colors: { bg: "#08110e", label: "Twentyseven", text: "#e8f1ec" },
+		label: "Gellix",
+		preview: "The quick brown fox jumps over the lazy dog",
+		transitionDescription: "Twentyseven",
+		transitionMessage: "Gellix",
+		value: "gellix",
+	},
+	{
 		colors: { bg: "#FFFFFF", label: "White & Black", text: "#000000" },
 		label: "Space Grotesk",
 		preview: "The quick brown fox jumps over the lazy dog",
@@ -113,9 +121,11 @@ export const FontSettingsCard = () => {
 											borderRadius: 6,
 											color: option.colors.text,
 											fontFamily:
-												option.value === "dm-sans"
-													? "'DM Sans Variable', sans-serif"
-													: "'Space Grotesk Variable', sans-serif",
+												option.value === "gellix"
+													? "Gellix, sans-serif"
+													: option.value === "dm-sans"
+														? "'DM Sans Variable', sans-serif"
+														: "'Space Grotesk Variable', sans-serif",
 											fontFeatureSettings:
 												option.value === "dm-sans"
 													? "'ss01' on, 'ss02' on, 'ss03' on, 'ss04' on, 'ss05' on, 'ss06' on, 'ss08' on"

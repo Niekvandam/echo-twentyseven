@@ -1,3 +1,4 @@
+import { useRealtimeTranscription } from "./hooks/useRealtimeTranscription";
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import {
@@ -51,11 +52,9 @@ import {
 	useConversationChunksQuery,
 	useConversationQuery,
 	useParticipantProjectById,
-	useUploadConversationChunk,
 } from "./hooks";
 import useChunkedAudioRecorder from "./hooks/useChunkedAudioRecorder";
 import { useConversationsHealthStream } from "./hooks/useConversationsHealthStream";
-import { useS3ConnectivityCheck } from "./hooks/useS3ConnectivityCheck";
 import type { RecordingMeterStatus } from "./ParticipantRecordingWaveform";
 import { ParticipantRecordingWaveform } from "./ParticipantRecordingWaveform";
 import { ParticipantSettingsModal } from "./ParticipantSettingsModal";
@@ -87,27 +86,12 @@ export const ParticipantConversationAudio = () => {
 	const projectQuery = useParticipantProjectById(projectId ?? "");
 	const conversationQuery = useConversationQuery(projectId, conversationId);
 	const chunks = useConversationChunksQuery(projectId, conversationId);
-	const uploadChunkMutation = useUploadConversationChunk();
+
 	const artefactsQuery = useConversationArtefacts(conversationId);
-	const pendingUploadsRef = useRef<Promise<unknown>[]>([]);
 
-	const onChunk = (chunk: Blob) => {
-		const uploadPromise = uploadChunkMutation.mutateAsync({
-			chunk,
-			conversationId: conversationId ?? "",
-			runFinishHook: false,
-			source: "PORTAL_AUDIO",
-			timestamp: new Date(),
-		});
-
-		pendingUploadsRef.current.push(uploadPromise);
-
-		// Clean up promise from array when done (success or error)
-		uploadPromise.finally(() => {
-			pendingUploadsRef.current = pendingUploadsRef.current.filter(
-				(p) => p !== uploadPromise,
-			);
-		});
+	const onChunk = (_chunk: Blob) => {
+		// Live transcription persists committed text segments; raw audio is not uploaded.
+		return;
 	};
 
 	const [scrollTargetRef, isVisible] = useElementOnScreen({
@@ -153,11 +137,6 @@ export const ParticipantConversationAudio = () => {
 	const [isReconnecting, setIsReconnecting] = useState(false);
 	const interruptionRecordingTimeRef = useRef<number>(0);
 
-	const { s3Status, retry: handleS3Reconnect } = useS3ConnectivityCheck(
-		conversationId,
-		{ queriesLoading: conversationQuery.isLoading || projectQuery.isLoading },
-	);
-
 	// Navigation and language
 	const navigate = useI18nNavigate();
 	const newConversationLink = useProjectSharingLink(
@@ -169,7 +148,17 @@ export const ParticipantConversationAudio = () => {
 	// Ref to store callback that will be set after audioRecorder is created
 	const onRecordingInterruptedRef = useRef<(() => void) | null>(null);
 
+	const realtime = useRealtimeTranscription(
+		projectId ?? "",
+		conversationId ?? "",
+		() => onRecordingInterruptedRef.current?.(),
+	);
+
 	const audioRecorder = useChunkedAudioRecorder({
+		onStreamReady: realtime.start,
+		onStreamStop: () => {
+			void realtime.stop().catch(() => {});
+		},
 		deviceId,
 		onChunk,
 		onRecordingInterrupted: () => onRecordingInterruptedRef.current?.(),
@@ -424,7 +413,7 @@ export const ParticipantConversationAudio = () => {
 				posthog.capture("portal_abandoned", {
 					conversation_id: conversationId,
 					participant_state: abandonStateRef.current.participantState,
-					pending_uploads: pendingUploadsRef.current.length,
+					pending_uploads: realtime.pending,
 					project_id: projectId,
 					recording_time_seconds: abandonStateRef.current.recordingTime,
 				});
@@ -500,7 +489,7 @@ export const ParticipantConversationAudio = () => {
 	const handleStopRecording = () => {
 		if (isRecording) {
 			setStoppedRecordingTime(recordingTime); // Capture time before stopping
-			stopRecording(); // Actually stop to trigger final chunk upload immediately
+			stopRecording(); // Commit the final transcript before finishing
 			// Release wakelock and disable auto-reacquire when stopping
 			wakeLock.releaseWakeLock();
 			wakeLock.disableAutoReacquire();
@@ -516,31 +505,7 @@ export const ParticipantConversationAudio = () => {
 			wakeLock.releaseWakeLock();
 			wakeLock.disableAutoReacquire();
 
-			// Small delay to ensure final chunk's upload promise is added to the array
-			await new Promise((resolve) => setTimeout(resolve, 100));
-
-			// Wait for all pending uploads to complete (with timeout)
-			if (pendingUploadsRef.current.length > 0) {
-				const timeoutPromise = new Promise<"timeout">((resolve) =>
-					setTimeout(() => resolve("timeout"), 30000),
-				);
-
-				const result = await Promise.race([
-					Promise.allSettled(pendingUploadsRef.current).then(() => "done"),
-					timeoutPromise,
-				]);
-
-				if (result === "timeout") {
-					console.warn("Upload wait timeout reached, proceeding anyway");
-					posthog.capture("portal_uploads_incomplete_on_finish", {
-						context: "finish",
-						conversation_id: conversationId,
-						pending_uploads: pendingUploadsRef.current.length,
-						project_id: projectId,
-					});
-				}
-			}
-
+			await realtime.flush();
 			await finishConversation(conversationId ?? "");
 			posthog.capture("conversation_finished", {
 				conversation_id: conversationId,
@@ -560,10 +525,15 @@ export const ParticipantConversationAudio = () => {
 		await handleConfirmFinish();
 	};
 
-	const handleSwitchToText = () => {
-		setStoppedRecordingTime(null);
-		close();
-		navigate(textModeUrl);
+	const handleSwitchToText = async () => {
+		try {
+			await realtime.flush();
+			setStoppedRecordingTime(null);
+			close();
+			navigate(textModeUrl);
+		} catch {
+			toast.error(t`The last transcript could not be saved. Please try again.`);
+		}
 	};
 
 	const handleResumeRecording = async () => {
@@ -578,10 +548,14 @@ export const ParticipantConversationAudio = () => {
 		}
 	};
 
-	const handleVerify = () => {
-		close();
-		handleResumeRecording();
-		navigate(`/${projectId}/conversation/${conversationId}/verify`);
+	const handleVerify = async () => {
+		try {
+			await realtime.flush();
+			close();
+			navigate(`/${projectId}/conversation/${conversationId}/verify`);
+		} catch {
+			toast.error(t`The last transcript could not be saved. Please try again.`);
+		}
 	};
 
 	// Clear stoppedRecordingTime when recording actually starts (avoids UI flash)
@@ -626,35 +600,10 @@ export const ParticipantConversationAudio = () => {
 		});
 	};
 
-	// Handler for reconnect button - waits for uploads, reports error, then reloads
+	// Committed segments survive reload in session storage and retry on restart.
 	const handleReconnect = async () => {
 		setIsReconnecting(true);
 		try {
-			// Small delay to ensure final chunk's upload promise is added to the array
-			await new Promise((resolve) => setTimeout(resolve, 100));
-
-			// Wait for all pending uploads to complete (with timeout)
-			if (pendingUploadsRef.current.length > 0) {
-				const timeoutPromise = new Promise<"timeout">((resolve) =>
-					setTimeout(() => resolve("timeout"), 30000),
-				);
-
-				const result = await Promise.race([
-					Promise.allSettled(pendingUploadsRef.current).then(() => "done"),
-					timeoutPromise,
-				]);
-
-				if (result === "timeout") {
-					console.warn("Upload wait timeout reached, proceeding anyway");
-					posthog.capture("portal_uploads_incomplete_on_finish", {
-						context: "reconnect",
-						conversation_id: conversationId,
-						pending_uploads: pendingUploadsRef.current.length,
-						project_id: projectId,
-					});
-				}
-			}
-
 			reportInterruption();
 
 			window.location.reload();
@@ -665,10 +614,6 @@ export const ParticipantConversationAudio = () => {
 	};
 
 	const handleStartRecording = async () => {
-		if (s3Status !== "passed") {
-			return;
-		}
-
 		const started = await startRecording();
 		if (!started) return;
 
@@ -685,13 +630,19 @@ export const ParticipantConversationAudio = () => {
 	const showVerify = projectQuery.data?.is_verify_enabled;
 	const showEcho = projectQuery.data?.is_get_reply_enabled;
 
-	const handleRefineClick = () => {
+	const handleRefineClick = async () => {
 		if (recordingTime < REFINE_BUTTON_THRESHOLD_SECONDS) {
 			openRefineInfoModal();
 			return;
 		}
 
-		navigate(`/${projectId}/conversation/${conversationId}/refine`);
+		try {
+			stopRecording();
+			await realtime.flush();
+			navigate(`/${projectId}/conversation/${conversationId}/refine`);
+		} catch {
+			toast.error(t`The last transcript could not be saved. Please try again.`);
+		}
 	};
 
 	if (conversationQuery.isLoading || projectQuery.isLoading) {
@@ -775,64 +726,19 @@ export const ParticipantConversationAudio = () => {
 
 	return (
 		<Box className="container mx-auto flex h-full max-w-2xl flex-col justify-end">
+			<Stack gap="xs" mb="md" aria-live="polite">
+				<Text size="sm">
+					<Trans>Live transcript</Trans>
+				</Text>
+				{realtime.text && <Text>{realtime.text}</Text>}
+				{realtime.error && (
+					<Text c="red" role="alert">
+						{realtime.error}
+					</Text>
+				)}
+			</Stack>
 			{/* modal for permissions error */}
 			<PermissionErrorModal permissionError={permissionError} />
-
-			{/* modal for S3 connectivity error */}
-			<Modal
-				opened={s3Status === "failed"}
-				onClose={() => {}}
-				withCloseButton={false}
-				centered
-				size="sm"
-				radius="md"
-				padding="xl"
-				closeOnClickOutside={false}
-				closeOnEscape={false}
-				overlayProps={{
-					color: "#FF9AA2",
-				}}
-				role="alertdialog"
-				aria-live="assertive"
-				aria-atomic="true"
-				{...testId("portal-audio-s3-check-modal")}
-			>
-				<Stack gap="md">
-					<Group gap="xs">
-						<IconAlertTriangle size={24} color="#FF9AA2" />
-						<Text fw={600} size="lg">
-							<Trans id="participant.modal.s3check.title">
-								Connection issue
-							</Trans>
-						</Text>
-						<IconAlertTriangle size={24} color="#FF9AA2" />
-					</Group>
-					<Text>
-						<Trans id="participant.modal.s3check.message">
-							Something is blocking your connection. Your audio will not be
-							saved unless this is resolved.
-						</Trans>
-					</Text>
-					<Text size="sm" c="dimmed">
-						<Trans id="participant.modal.s3check.suggestions">
-							This can happen when a VPN or firewall is blocking the connection.
-							Try disabling your VPN, switching to a different network (e.g.
-							mobile hotspot), or contact your IT department for help.
-						</Trans>
-					</Text>
-					<Button
-						onClick={handleS3Reconnect}
-						loading={s3Status === "checking"}
-						disabled={s3Status === "checking"}
-						fullWidth
-						radius="md"
-						size="xl"
-						{...testId("portal-audio-s3-check-reconnect-button")}
-					>
-						<Trans id="participant.button.s3check.reconnect">Reconnect</Trans>
-					</Button>
-				</Stack>
-			</Modal>
 
 			{/* modal for stop recording confirmation */}
 			<ParticipantSettingsModal
@@ -844,7 +750,7 @@ export const ParticipantConversationAudio = () => {
 				opened={opened}
 				close={close}
 				isStopping={isStopping}
-				isUploading={uploadChunkMutation.isPending}
+				isUploading={realtime.pending > 0}
 				handleConfirmFinish={handleConfirmFinish}
 				handleResume={handleResumeRecording}
 				handleSwitchToText={handleSwitchToText}
@@ -920,20 +826,18 @@ export const ParticipantConversationAudio = () => {
 						<IconAlertTriangle size={24} color="#FF9AA2" />
 					</Group>
 					<Text>
-						<Trans id="participant.modal.interruption.issue.message">
-							Attention! We lost the last 60 seconds or so of your recording due
-							to some interruption. Please press the button below to reconnect.
+						<Trans>
+							Live transcription was interrupted. The last sentence may be
+							missing. Reconnect and repeat it to continue.
 						</Trans>
 					</Text>
 
 					{/* Uploading indicator - same pattern as StopRecordingConfirmationModal */}
-					{uploadChunkMutation.isPending && (
+					{realtime.pending > 0 && (
 						<Group gap="xs" justify="flex-start" py="xs">
 							<Loader size="sm" />
 							<Text size="sm" c="dimmed">
-								<Trans id="participant.modal.interruption.uploading">
-									Uploading audio...
-								</Trans>
+								<Trans>Saving transcript...</Trans>
 							</Text>
 						</Group>
 					)}
@@ -941,7 +845,7 @@ export const ParticipantConversationAudio = () => {
 					<Button
 						onClick={handleReconnect}
 						loading={isReconnecting}
-						disabled={isReconnecting || uploadChunkMutation.isPending}
+						disabled={isReconnecting}
 						fullWidth
 						radius="md"
 						size="xl"
@@ -1051,12 +955,7 @@ export const ParticipantConversationAudio = () => {
 										radius="md"
 										rightSection={<IconMicrophone />}
 										onClick={handleStartRecording}
-										loading={
-											isStarting ||
-											s3Status === "checking" ||
-											s3Status === "pending"
-										}
-										disabled={s3Status !== "passed"}
+										loading={isStarting}
 										className="flex-grow"
 										{...testId("portal-audio-record-button")}
 									>

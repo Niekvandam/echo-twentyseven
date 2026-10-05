@@ -459,8 +459,10 @@ async def _extract_one(
         started = _now()
         try:
             raw = await extract_popcorn(transcript_id=cid, transcript=window, host_note=host_note)
+            shaped = shape_popcorn_items(raw, cid)
+            model_count = len(raw.get("items") or [])
             items, carried, redropped = _carry_forward(
-                shape_popcorn_items(raw, cid),
+                shaped,
                 entry,
                 transcript["text"],
                 writer.state.get("quotes") or [],
@@ -503,7 +505,8 @@ async def _extract_one(
             again = f", {redropped} held back again" if redropped else ""
             kept = f", {carried} carried over" if carried else ""
             outcomes.append(
-                f"popcorn {cid[:8]}: {len(items)} phrases{held}{again}{kept} in {elapsed_ms} ms"
+                f"popcorn {cid[:8]}: {len(items)} phrases{held}{again}{kept} "
+                f"(model={model_count}, shaped={len(shaped)}) in {elapsed_ms} ms"
             )
         except Exception as exc:  # a dead transcript must not stall the stage
             entry.update(
@@ -993,6 +996,9 @@ async def run_popcorn_tick(
             fallback_title=str(loop.get("name") or "Popcorn"),
         )
         host_note = voice_host_note(settings.get("voice"))
+        output_language = get_settings().canvas.popcorn_output_language
+        if output_language:
+            host_note += f"\nOutput language: {output_language}"
         transcripts = await gather_transcripts(
             project_id=project_id, acting_directus_user_id=acting_user_id
         )

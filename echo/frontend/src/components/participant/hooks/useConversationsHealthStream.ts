@@ -8,6 +8,7 @@ type ConversationIssue =
 	| "NONE";
 
 export function useConversationsHealthStream(conversationIds?: string[]) {
+	const conversationIdsParam = conversationIds?.join(",") ?? "";
 	const eventSourceRef = useRef<EventSource | null>(null);
 	const [countEventReceived, setCountEventReceived] = useState<number>(0);
 	const [sseConnectionHealthy, setSseConnectionHealthy] =
@@ -17,8 +18,7 @@ export function useConversationsHealthStream(conversationIds?: string[]) {
 		useState<ConversationIssue | null>(null);
 
 	useEffect(() => {
-		if (conversationIds && conversationIds.length > 0) {
-			const conversationIdsParam = conversationIds.join(",");
+		if (conversationIdsParam) {
 			const eventSource = new EventSource(
 				`${API_BASE_URL}/conversations/health/stream?conversation_ids=${conversationIdsParam}`,
 			);
@@ -49,7 +49,7 @@ export function useConversationsHealthStream(conversationIds?: string[]) {
 				eventSource.close();
 			};
 		}
-	}, [conversationIds]);
+	}, [conversationIdsParam]);
 
 	// Check ping freshness
 	useEffect(() => {

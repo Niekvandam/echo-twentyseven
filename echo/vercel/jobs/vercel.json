@@ -1,0 +1,36 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": [
+    "fra1"
+  ],
+  "functions": {
+    "api/enqueue.js": {
+      "maxDuration": 30
+    },
+    "api/consume.js": {
+      "maxDuration": 800,
+      "experimentalTriggers": [
+        {
+          "type": "queue/v2beta",
+          "topic": "echo-tasks"
+        }
+      ]
+    },
+    "api/reconcile.js": {
+      "maxDuration": 60
+    },
+    "api/sweep.js": {
+      "maxDuration": 60
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/reconcile",
+      "schedule": "*/2 * * * *"
+    },
+    {
+      "path": "/api/sweep",
+      "schedule": "0 4 * * *"
+    }
+  ]
+}

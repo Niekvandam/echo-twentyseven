@@ -23,7 +23,7 @@ const scaleTypeSize = (value: string): string => {
 	return `${Number.parseFloat(scaled.toFixed(4))}${match[2]}`;
 };
 
-export type FontFamily = "dm-sans" | "space-grotesk";
+export type FontFamily = "dm-sans" | "space-grotesk" | "gellix";
 export type FontSizeScale = "xs" | "small" | "normal" | "large" | "xl";
 
 type AppPreferences = {
@@ -38,19 +38,19 @@ type AppPreferencesContextType = {
 };
 
 const defaultPreferences: AppPreferences = {
-	fontFamily: "dm-sans",
+	fontFamily: "gellix",
 	fontSizeScale: "normal",
 };
 
 // Changed key to reset existing users to new DM Sans default
-const STORAGE_KEY = "dembrane-app-preferences-v2";
+const STORAGE_KEY = "twentyseven-app-preferences-v1";
 
 const AppPreferencesContext = createContext<AppPreferencesContextType | null>(
 	null,
 );
 
 const isValidFontFamily = (value: string): value is FontFamily => {
-	return value === "dm-sans" || value === "space-grotesk";
+	return value === "dm-sans" || value === "space-grotesk" || value === "gellix";
 };
 
 const getThemeFromUrl = (): FontFamily | null => {
@@ -119,19 +119,24 @@ export const AppPreferencesProvider = ({
 
 	// Apply font and linked color scheme to document
 	useEffect(() => {
+		const isGellix = preferences.fontFamily === "gellix";
 		const isDmSans = preferences.fontFamily === "dm-sans";
 		const scale = preferences.fontSizeScale || "normal";
 		const root = document.documentElement;
 
 		// Font
-		const fontValue = isDmSans
-			? "'DM Sans Variable', sans-serif"
-			: "'Space Grotesk Variable', sans-serif";
+		const fontValue = isGellix
+			? "Gellix, sans-serif"
+			: isDmSans
+				? "'DM Sans Variable', sans-serif"
+				: "'Space Grotesk Variable', sans-serif";
 
 		// Bold face for .allow-bold surfaces; Space Grotesk has real weights already
-		const contentBoldFontValue = isDmSans
-			? "'DM Sans Content', 'DM Sans Variable', sans-serif"
-			: "'Space Grotesk Variable', sans-serif";
+		const contentBoldFontValue = isGellix
+			? "Gellix, sans-serif"
+			: isDmSans
+				? "'DM Sans Content', 'DM Sans Variable', sans-serif"
+				: "'Space Grotesk Variable', sans-serif";
 
 		// Font feature settings for stylistic sets (ss01-ss06, ss08)
 		const fontFeatureSettings = isDmSans
@@ -141,8 +146,12 @@ export const AppPreferencesProvider = ({
 		// Colors linked to font choice
 		// DM Sans → Parchment + Graphite
 		// Space Grotesk → White + Black
-		const backgroundColor = isDmSans ? "#F6F4F1" : "#FFFFFF";
-		const textColor = isDmSans ? "#2D2D2C" : "#000000";
+		const backgroundColor = isGellix
+			? "#08110e"
+			: isDmSans
+				? "#F6F4F1"
+				: "#FFFFFF";
+		const textColor = isGellix ? "#e8f1ec" : isDmSans ? "#2D2D2C" : "#000000";
 
 		// Base font size depends on both font family and scale
 		const fontSizeMap = isDmSans
@@ -349,7 +358,10 @@ export const AppPreferencesProvider = ({
 		root.style.setProperty("--app-font-feature-settings", fontFeatureSettings);
 
 		// Set data attribute for potential CSS selectors
-		root.setAttribute("data-theme", isDmSans ? "parchment" : "clean");
+		root.setAttribute(
+			"data-theme",
+			isGellix ? "twentyseven" : isDmSans ? "parchment" : "clean",
+		);
 	}, [preferences.fontFamily, preferences.fontSizeScale]);
 
 	return (

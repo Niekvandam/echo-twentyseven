@@ -215,7 +215,7 @@ def reconcile_stale_claims(client: Any, stale_seconds: int = STALE_CLAIM_SECONDS
     return reset
 
 
-def claim_due_tasks(client: Any, limit: int = 50) -> list[dict]:
+def claim_due_tasks(client: Any, limit: int = 50, task_type: str | None = None) -> list[dict]:
     """Find due rows (status=scheduled, scheduled_at<=now) and claim each by
     flipping it to `processing`. Returns the claimed rows (oldest-due first)."""
     now_iso = _now_iso()
@@ -226,6 +226,7 @@ def claim_due_tasks(client: Any, limit: int = 50) -> list[dict]:
                 "filter": {
                     "status": {"_eq": STATUS_SCHEDULED},
                     "scheduled_at": {"_lte": now_iso},
+                    **({"task_type": {"_eq": task_type}} if task_type else {}),
                 },
                 "fields": _RUNNER_FIELDS,
                 "sort": ["scheduled_at"],

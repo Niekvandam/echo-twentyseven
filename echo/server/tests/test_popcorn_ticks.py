@@ -140,8 +140,12 @@ def fake(monkeypatch) -> _FakeDirectus:
     class _Flags:
         enable_canvas = True
 
+    class _Canvas:
+        popcorn_output_language = None
+
     class _Settings:
         feature_flags = _Flags()
+        canvas = _Canvas()
 
     monkeypatch.setattr(ticks, "get_settings", lambda: _Settings())
     return fake

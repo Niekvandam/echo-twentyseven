@@ -6,6 +6,8 @@ from fastapi import (
 
 from dembrane.api.chat import ChatRouter
 from dembrane.api.stats import StatsRouter
+from dembrane.api.realtime_transcription import router as RealtimeTranscriptionRouter
+from dembrane.api.vercel_tasks import router as VercelTasksRouter
 from dembrane.api.search import SearchRouter
 from dembrane.api.verify import VerifyRouter
 from dembrane.api.agentic import AgenticRouter
@@ -20,6 +22,8 @@ from dembrane.api.project_webhook import ProjectWebhookRouter
 logger = getLogger("api")
 
 api = APIRouter()
+api.include_router(VercelTasksRouter)
+api.include_router(RealtimeTranscriptionRouter)
 
 
 @api.get("/health")

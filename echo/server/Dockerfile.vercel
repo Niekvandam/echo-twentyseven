@@ -1,0 +1,13 @@
+FROM python:3.11-slim
+COPY --from=ghcr.io/astral-sh/uv:0.8.22 /uv /usr/local/bin/uv
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev --python /usr/local/bin/python
+COPY dembrane ./dembrane
+COPY prompt_templates ./prompt_templates
+COPY email_templates ./email_templates
+COPY server.py ./server.py
+ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 PORT=80
+CMD ["uv", "run", "--no-sync", "--python", "/usr/local/bin/python", "python", "server.py"]

@@ -75,6 +75,7 @@ Theme is driven by CSS variables, not Tailwind tokens, so `dark:` classes don't 
   - `--app-text`: default text color
   - `--app-font-family`: font family
 - Font preference is **linked** to a color scheme; switching font also switches the palette:
+  - Gellix → Twentyseven dark green background and light text (default)
   - DM Sans → Parchment `#F6F4F1` background + Graphite `#2D2D2C` text
   - Space Grotesk → White background + Black text
 - Mantine theme (`src/theme.tsx`) overrides `white` and `black` and pins Modal/Drawer/Popover backgrounds to `var(--app-background)`
@@ -83,7 +84,7 @@ Theme is driven by CSS variables, not Tailwind tokens, so `dark:` classes don't 
   // Instead of: className="bg-parchment"
   style={{ backgroundColor: "var(--app-background)" }}
   ```
-- User preferences persist in `localStorage` under `dembrane-app-preferences`
+- User preferences persist in `localStorage` under `twentyseven-app-preferences-v1`
 
 ## Type scale (single source)
 

@@ -43,9 +43,9 @@ def test_shape_popcorn_items_applies_first_run_gates() -> None:
     assert shape_popcorn_items(raw, "t1")[0]["id"] == ids[0]
 
 
-def test_shape_popcorn_items_caps_at_eight_and_tolerates_junk() -> None:
-    raw = {"items": [{"phrase": f"phrase {n}"} for n in range(12)]}
-    assert len(shape_popcorn_items(raw, "t")) == 8
+def test_shape_popcorn_items_caps_at_twenty_and_tolerates_junk() -> None:
+    raw = {"items": [{"phrase": f"phrase {n}"} for n in range(25)]}
+    assert len(shape_popcorn_items(raw, "t")) == 20
     assert shape_popcorn_items(None, "t") == []
     assert shape_popcorn_items({"items": "nope"}, "t") == []
 

@@ -22,7 +22,11 @@ import { useLoginMutation } from "@/components/auth/hooks";
 import { resolveNextPath } from "@/components/auth/utils/nextPath";
 import { I18nLink } from "@/components/common/i18nLink";
 import { useTransitionCurtain } from "@/components/layout/TransitionCurtainProvider";
-import { API_BASE_URL } from "@/config";
+import {
+	API_BASE_URL,
+	ENABLE_PUBLIC_REGISTRATION,
+	ENABLE_EMAIL_PASSWORD_RESET,
+} from "@/config";
 import { useI18nNavigate } from "@/hooks/useI18nNavigate";
 import { testId } from "@/lib/testUtils";
 
@@ -55,7 +59,7 @@ import { testId } from "@/lib/testUtils";
 // };
 
 export const LoginRoute = () => {
-	useDocumentTitle(t`Login | dembrane`);
+	useDocumentTitle(t`Login | Twentyseven`);
 	const [searchParams, _setSearchParams] = useSearchParams();
 
 	// When we arrive from /register with ?email=..., pre-seed the email
@@ -119,7 +123,7 @@ export const LoginRoute = () => {
 
 			// Start transition immediately — user sees smooth curtain right away
 			const transitionPromise = runTransition({
-				message: isNewUser ? t`Welcome to dembrane` : t`Welcome back`,
+				message: isNewUser ? t`Welcome to Twentyseven` : t`Welcome back`,
 			});
 
 			// Check onboarding in parallel with the transition. Small delay
@@ -344,7 +348,7 @@ export const LoginRoute = () => {
 									/>
 								</>
 							)}
-							{!otpRequired && (
+							{!otpRequired && ENABLE_EMAIL_PASSWORD_RESET && (
 								<div className="w-full text-right">
 									<I18nLink to="/request-password-reset">
 										<Anchor
@@ -374,18 +378,30 @@ export const LoginRoute = () => {
 						</Stack>
 					</form>
 
-					<Divider variant="dashed" label={t`or`} labelPosition="center" />
+					{ENABLE_PUBLIC_REGISTRATION ? (
+						<>
+							<Divider variant="dashed" label={t`or`} labelPosition="center" />
 
-					<I18nLink to="/register">
-						<Button
-							size="lg"
-							variant="outline"
-							fullWidth
-							{...testId("auth-login-register-button")}
-						>
-							<Trans>Create an account</Trans>
-						</Button>
-					</I18nLink>
+							<I18nLink to="/register">
+								<Button
+									size="lg"
+									variant="outline"
+									fullWidth
+									{...testId("auth-login-register-button")}
+								>
+									<Trans>Create an account</Trans>
+								</Button>
+							</I18nLink>
+						</>
+					) : (
+						<Text size="sm">
+							<Trans>
+								This dashboard is for the Twentyseven administrator.
+								Participants join using their session link or QR code and do not
+								need an account.
+							</Trans>
+						</Text>
+					)}
 
 					{/* <Box>
 						{providerQuery.data?.find(

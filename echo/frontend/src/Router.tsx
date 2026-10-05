@@ -20,7 +20,12 @@ import { Verify } from "./components/participant/verify/Verify";
 import { VerifyArtefact } from "./components/participant/verify/VerifyArtefact";
 import { VerifySelection } from "./components/participant/verify/VerifySelection";
 import { ProjectAccessGuard } from "./components/project/ProjectAccessGuard";
-import { ENABLE_CANVAS, ENABLE_MONITOR } from "./config";
+import {
+	ENABLE_CANVAS,
+	ENABLE_MONITOR,
+	ENABLE_PUBLIC_REGISTRATION,
+	ENABLE_EMAIL_PASSWORD_RESET,
+} from "./config";
 import {
 	ParticipantConversationAudioRoute,
 	ParticipantConversationTextRoute,
@@ -366,7 +371,11 @@ export const mainRouter = createBrowserRouter([
 			{
 				element: (
 					<AuthLayout>
-						<RegisterRoute />
+						{ENABLE_PUBLIC_REGISTRATION ? (
+							<RegisterRoute />
+						) : (
+							<Navigate to="../login" replace />
+						)}
 					</AuthLayout>
 				),
 				path: "register",
@@ -374,7 +383,11 @@ export const mainRouter = createBrowserRouter([
 			{
 				element: (
 					<AuthLayout>
-						<CheckYourEmailRoute />
+						{ENABLE_EMAIL_PASSWORD_RESET ? (
+							<CheckYourEmailRoute />
+						) : (
+							<Navigate to="../login" replace />
+						)}
 					</AuthLayout>
 				),
 				path: "check-your-email",
@@ -382,7 +395,11 @@ export const mainRouter = createBrowserRouter([
 			{
 				element: (
 					<AuthLayout>
-						<PasswordResetRoute />
+						{ENABLE_EMAIL_PASSWORD_RESET ? (
+							<PasswordResetRoute />
+						) : (
+							<Navigate to="../login" replace />
+						)}
 					</AuthLayout>
 				),
 				path: "password-reset",
@@ -390,7 +407,11 @@ export const mainRouter = createBrowserRouter([
 			{
 				element: (
 					<AuthLayout>
-						<RequestPasswordResetRoute />
+						{ENABLE_EMAIL_PASSWORD_RESET ? (
+							<RequestPasswordResetRoute />
+						) : (
+							<Navigate to="../login" replace />
+						)}
 					</AuthLayout>
 				),
 				path: "request-password-reset",
@@ -398,7 +419,11 @@ export const mainRouter = createBrowserRouter([
 			{
 				element: (
 					<AuthLayout>
-						<VerifyEmailRoute />
+						{ENABLE_PUBLIC_REGISTRATION ? (
+							<VerifyEmailRoute />
+						) : (
+							<Navigate to="../login" replace />
+						)}
 					</AuthLayout>
 				),
 				path: "verify-email",

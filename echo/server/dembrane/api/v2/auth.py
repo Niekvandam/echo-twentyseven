@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 from urllib.parse import urlencode
 
 import httpx
-from fastapi import Request, Response, APIRouter
+from fastapi import Request, Response, APIRouter, HTTPException
 from pydantic import Field, BaseModel, field_validator
 
 from dembrane.email import send_email
@@ -280,9 +280,11 @@ async def register_user(body: RegisterRequest, request: Request) -> Response:
     users get a transactional "you already have an account" email with
     sign-in and password-reset links. No enumeration leak.
     """
-    await _register_rate_limiter.check(_client_ip(request))
-
     settings = get_settings()
+    if not settings.feature_flags.public_registration:
+        raise HTTPException(status_code=403, detail="Public registration is disabled")
+
+    await _register_rate_limiter.check(_client_ip(request))
     email = body.email.strip().lower()
 
     if not _EMAIL_RE.match(email):

@@ -19,13 +19,14 @@ from pathlib import Path
 from functools import lru_cache
 
 from dembrane.llms import MODELS, arouter_completion
+from dembrane.settings import get_settings
 from dembrane.popcorn.analysis import POPCORN_SCHEMA, TENSIONS_SCHEMA, STAKEHOLDERS_SCHEMA
 from dembrane.popcorn.enrichment import KIND_SCHEMA, QUESTION_SCHEMA, VALIDATE_SCHEMA
 
 logger = logging.getLogger("dembrane.popcorn.model")
 
 PROMPTS_DIR = Path(__file__).with_name("prompts")
-POPCORN_PROMPT = "popcorn-v1.7"
+POPCORN_PROMPT = "popcorn-v1.10"
 VALIDATE_PROMPT = "popcorn-validate"
 KIND_PROMPT = "popcorn-kind"
 QUESTION_PROMPT = "popcorn-question"
@@ -111,6 +112,14 @@ async def _structured_completion(
     fast: bool,
     timeout: float,
 ) -> dict[str, Any]:
+    language = get_settings().canvas.popcorn_output_language
+    if language:
+        system_prompt += (
+            f"\n\nOUTPUT LANGUAGE OVERRIDE: Write all generated phrases, headings, descriptions "
+            f"and rewritten questions in {language}, regardless of the transcript language. "
+            "This overrides instructions to use the transcript language. Preserve verbatim "
+            "evidence quotes in their original language; never translate evidence or change IDs."
+        )
     kwargs: dict[str, Any] = {
         "messages": [
             {"role": "system", "content": system_prompt},
@@ -168,7 +177,7 @@ async def extract_popcorn(
         system_prompt=prompt_text(POPCORN_PROMPT),
         user_text=_transcript_message(transcript_id, transcript, host_note),
         schema=POPCORN_SCHEMA,
-        max_tokens=2000,
+        max_tokens=4000,
         fast=True,
         timeout=EXTRACT_TIMEOUT_SECONDS,
     )

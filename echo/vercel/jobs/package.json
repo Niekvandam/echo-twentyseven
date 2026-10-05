@@ -1,0 +1,16 @@
+{
+  "name": "twentyseven-jobs",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@vercel/blob": "2.8.0",
+    "@vercel/queue": "0.5.1",
+    "redis": "^6.2.1"
+  }
+}

@@ -21,3 +21,5 @@ settings.local.json
 
 # Workspaces data-migration tooling (local only; orgs/*.yaml contain real emails, never commit)
 echo/scripts/workspace-migration/
+.vercel
+.env*

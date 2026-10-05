@@ -115,6 +115,8 @@ class LLMProviderConfig(BaseModel):
 
 
 class LLMSettings(BaseSettings):
+    google_api_key: Optional[str] = Field(default=None, alias="GOOGLE_GENERATIVE_AI_API_KEY")
+
     model_config = SettingsConfigDict(
         env_prefix="LLM__",
         env_nested_delimiter="__",
@@ -190,6 +192,8 @@ class LLMSettings(BaseSettings):
 
             # Only add if model is configured
             if config_data.get("model"):
+                if str(config_data["model"]).startswith("gemini/") and not config_data.get("api_key"):
+                    config_data["api_key"] = self.google_api_key
                 config = LLMProviderConfig(**config_data)
                 deployments.append((suffix, config))
 
@@ -231,6 +235,8 @@ class URLSettings(BaseSettings):
 
 
 class FeatureFlagSettings(BaseSettings):
+    public_registration: bool = Field(default=True, alias="ENABLE_PUBLIC_REGISTRATION")
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", case_sensitive=False)
 
     debug_mode: bool = Field(
@@ -280,6 +286,8 @@ class FeatureFlagSettings(BaseSettings):
 
 
 class DirectusSettings(BaseSettings):
+    automation_bypass: str = Field(default="", alias="DIRECTUS_AUTOMATION_BYPASS_SECRET")
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", case_sensitive=False)
 
     base_url: str = Field(
@@ -372,6 +380,13 @@ class DatabaseSettings(BaseSettings):
         raise ValueError("DATABASE_URL must start with postgresql+psycopg://")
 
 
+class VercelJobsSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    url: str = Field(default="", alias="VERCEL_JOBS_URL")
+    secret: str = Field(default="", alias="ECHO_JOBS_SECRET")
+
+
 class CacheSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", case_sensitive=False)
 
@@ -383,6 +398,8 @@ class CacheSettings(BaseSettings):
 
 
 class CanvasSettings(BaseSettings):
+    popcorn_output_language: str = Field(default="", alias="POPCORN_OUTPUT_LANGUAGE")
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", case_sensitive=False)
 
     max_html_bytes: int = Field(
@@ -410,6 +427,8 @@ class CanvasSettings(BaseSettings):
 
 class StorageSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", case_sensitive=False)
+
+    provider: Literal["s3", "vercel_blob"] = Field(default="s3", alias="STORAGE_PROVIDER")
 
     bucket: str = Field(
         ...,
@@ -511,6 +530,8 @@ class AgenticSettings(BaseSettings):
 
 class TranscriptionSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", case_sensitive=False)
+
+    elevenlabs_api_key: str = Field(default="", alias="ELEVENLABS_API_KEY")
 
     provider: Optional[TranscriptionProvider] = Field(
         default=None,
@@ -688,11 +709,14 @@ class AppSettings:
         self.email = EmailSettings()
         self.database = DatabaseSettings()
         self.cache = CacheSettings()
+        self.vercel_jobs = VercelJobsSettings()
         self.canvas = CanvasSettings()
         self.storage = StorageSettings()
         self.transcription = TranscriptionSettings()
         self.llms = LLMSettings()
         self.embedding = EmbeddingSettings()
+        if self.embedding.model.startswith("gemini/") and not self.embedding.api_key:
+            self.embedding.api_key = self.llms.google_api_key
         self.agentic = AgenticSettings()
         self.billing = BillingSettings()
         self.support = SupportSettings()

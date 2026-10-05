@@ -17,6 +17,7 @@ from dembrane.seed import seed_default_languages, reconcile_default_verification
 from dembrane.api.v2 import v2_router
 from dembrane.sentry import init_sentry
 from dembrane.api.api import api
+from dembrane.activity import touch_activity, counts_as_activity
 from dembrane.settings import get_settings
 from dembrane.gzip_middleware import SSEAwareGZipMiddleware
 from dembrane.agent_access.mcp_server import routes as mcp_routes
@@ -112,6 +113,18 @@ async def add_process_time_header(
     process_time = time.time() - start_time
     response.headers["X-Process-Time"] = str(process_time)
     return response
+
+
+@app.middleware("http")
+async def refresh_activity_heartbeat(
+    request: Request,
+    call_next: Callable[[Request], Awaitable[Response]],
+) -> Response:
+    # See dembrane.activity for what counts and why the platform's own probe
+    # of the container must not.
+    if counts_as_activity(request.url.path):
+        await touch_activity(request.url.path)
+    return await call_next(request)
 
 
 logger.info("mounting api on /api")

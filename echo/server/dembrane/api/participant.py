@@ -754,6 +754,7 @@ async def get_chunk_upload_url(
         return {
             "chunk_id": chunk_id,
             "upload_url": presigned_data["url"],
+            "method": presigned_data.get("method", "POST"),
             "fields": presigned_data["fields"],
             "file_url": file_url,
         }

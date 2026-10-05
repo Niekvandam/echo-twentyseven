@@ -236,3 +236,14 @@ def test_dispatch_unknown_type_raises():
 
     with pytest.raises(ValueError, match="unknown scheduled_task type"):
         T._dispatch_scheduled_task({"task_type": "nope", "payload": {}})
+
+
+def test_claim_due_tasks_can_scope_popcorn_without_dispatching_other_flows():
+    client = FakeClient([
+        {"id": "popcorn", "task_type": "popcorn_tick", "status": "scheduled", "scheduled_at": _PAST},
+        {"id": "billing", "task_type": "generate_report", "status": "scheduled", "scheduled_at": _PAST},
+    ])
+    claimed = st.claim_due_tasks(client, task_type="popcorn_tick")
+    assert [row["id"] for row in claimed] == ["popcorn"]
+    assert client.rows["billing"]["status"] == "scheduled"
+    assert [row["id"] for row in st.claim_due_tasks(client)] == ["billing"]

@@ -17,8 +17,10 @@ import re
 import hashlib
 from typing import Any
 
-# The public popcorn contract: at most eight phrases, each short. Size on the
+# The public popcorn contract: at most twenty phrases, each short. Size on the
 # wall is one size; the deck steps a phrase down only to make it fit.
+MAX_POPCORN_ITEMS = 20
+
 POPCORN_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
@@ -26,7 +28,7 @@ POPCORN_SCHEMA: dict[str, Any] = {
     "properties": {
         "items": {
             "type": "array",
-            "maxItems": 8,
+            "maxItems": MAX_POPCORN_ITEMS,
             "items": {
                 "type": "object",
                 "additionalProperties": False,
@@ -228,7 +230,7 @@ def shape_popcorn_items(raw: dict[str, Any] | None, transcript_id: str) -> list[
         if question:
             entry["question"] = True
         out.append(entry)
-        if len(out) >= 8:
+        if len(out) >= MAX_POPCORN_ITEMS:
             break
     return out
 

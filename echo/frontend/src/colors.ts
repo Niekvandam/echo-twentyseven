@@ -101,16 +101,16 @@ export const brandColors = {
 	],
 	// Primary / Institution Blue (base: #4169E1)
 	primary: [
-		"#f0f5ff",
-		"#e9f1ff",
-		"#d4dffe",
-		"#a8bbf4",
-		"#7996eb",
-		"#5176e4",
-		"#4169e1", // base at position 6
-		"#2957df",
-		"#1a48c6",
-		"#1040b2",
+		"#e8f5ed",
+		"#d1ecdb",
+		"#b6e2c5",
+		"#9fd9b4",
+		"#87d1a0",
+		"#6fc98d",
+		"#58c47c",
+		"#43af68",
+		"#349254",
+		"#287343",
 	],
 	// Salmon (base: #FF9AA2)
 	salmon: [
@@ -208,7 +208,7 @@ export const baseColors = {
 	mauve: "#FFC2FF",
 	parchment: "#F6F4F1",
 	peach: "#FFD166",
-	primary: "#4169E1",
+	primary: "#58c47c",
 	salmon: "#FF9AA2",
 	springGreen: "#1EFFA1",
 } as const;

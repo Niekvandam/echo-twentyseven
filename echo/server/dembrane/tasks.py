@@ -84,7 +84,9 @@ ssl_params = ""
 if REDIS_URL.startswith("rediss://") and "?ssl_cert_reqs=" not in REDIS_URL:
     ssl_params = "?ssl_cert_reqs=none"
 
-redis_connection_string = REDIS_URL + "/1" + ssl_params
+redis_connection_string = (
+    REDIS_URL if settings.vercel_jobs.url else REDIS_URL + "/1" + ssl_params
+)
 
 
 # Managed Redis closes idle connections; without health checks the
@@ -116,6 +118,11 @@ broker = RedisBroker(
     #     Retries,
     # ],
 )
+
+if settings.vercel_jobs.url:
+    from dembrane.vercel_broker import VercelBroker
+
+    broker = VercelBroker(settings.vercel_jobs.url, settings.vercel_jobs.secret)
 
 # results backend
 results_backend = ResultsRedisBackend(client=_redis_client)
@@ -1860,7 +1867,7 @@ def task_reconcile_popcorn_tick_tasks() -> None:
 
 
 @dramatiq.actor(queue_name="network", priority=50)
-def task_process_scheduled_tasks() -> None:
+def task_process_scheduled_tasks(task_type: Optional[str] = None) -> None:
     """Claim and dispatch every scheduled_task whose time has come.
 
     Reconciles stale `processing` rows first (crash recovery), then claims due
@@ -1878,7 +1885,7 @@ def task_process_scheduled_tasks() -> None:
         reset = reconcile_stale_claims(client)
         if reset:
             task_logger.info("reset %d stale scheduled_task claim(s)", reset)
-        due = claim_due_tasks(client, limit=50)
+        due = claim_due_tasks(client, limit=50, task_type=task_type)
 
     if not due:
         return

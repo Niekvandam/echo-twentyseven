@@ -16,36 +16,36 @@ import {
 const FONT_SIZE_OPTIONS: {
 	value: FontSizeScale;
 	label: string;
-	px: { "dm-sans": number; "space-grotesk": number };
+	px: { "dm-sans": number; "space-grotesk": number; gellix: number };
 	visualSize: number;
 }[] = [
 	{
 		label: "A",
-		px: { "dm-sans": 12, "space-grotesk": 12 },
+		px: { "dm-sans": 12, "space-grotesk": 12, gellix: 12 },
 		value: "xs",
 		visualSize: 10,
 	},
 	{
 		label: "A",
-		px: { "dm-sans": 14, "space-grotesk": 14 },
+		px: { "dm-sans": 14, "space-grotesk": 14, gellix: 14 },
 		value: "small",
 		visualSize: 13,
 	},
 	{
 		label: "A",
-		px: { "dm-sans": 16, "space-grotesk": 16 },
+		px: { "dm-sans": 16, "space-grotesk": 16, gellix: 16 },
 		value: "normal",
 		visualSize: 16,
 	},
 	{
 		label: "A",
-		px: { "dm-sans": 18, "space-grotesk": 18 },
+		px: { "dm-sans": 18, "space-grotesk": 18, gellix: 18 },
 		value: "large",
 		visualSize: 19,
 	},
 	{
 		label: "A",
-		px: { "dm-sans": 20, "space-grotesk": 20 },
+		px: { "dm-sans": 20, "space-grotesk": 20, gellix: 20 },
 		value: "xl",
 		visualSize: 22,
 	},

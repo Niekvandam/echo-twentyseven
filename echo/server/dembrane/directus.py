@@ -95,6 +95,12 @@ def make_request_with_retry(
     Raises:
         requests.exceptions.RequestException: If the request fails after all retries
     """
+    bypass = get_settings().directus.automation_bypass
+    if bypass:
+        from urllib.parse import urlsplit
+        if urlsplit(url).netloc == urlsplit(get_settings().directus.base_url).netloc:
+            kwargs.setdefault("headers", {})["x-vercel-protection-bypass"] = bypass
+
     retries = 0
     while True:
         try:

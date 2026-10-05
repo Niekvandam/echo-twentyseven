@@ -25,8 +25,8 @@ logger = getLogger("dembrane.coordination")
 settings = get_settings()
 REDIS_URL = settings.cache.redis_url
 
-# Use a different DB than Dramatiq (which uses /1) to avoid conflicts
-# Using /2 for coordination data
+# The original worker deployment uses DB 2. Managed Upstash only supports
+# DB 0; its coordination keys remain separated by the coord: prefix.
 _COORDINATION_DB = 2
 
 # Key prefix for coordination data
@@ -49,7 +49,7 @@ def _get_sync_redis_client() -> Any:
     if url.startswith("rediss://") and "?ssl_cert_reqs=" not in url:
         ssl_params = "?ssl_cert_reqs=none"
 
-    connection_string = f"{url}/{_COORDINATION_DB}{ssl_params}"
+    connection_string = url if settings.vercel_jobs.url else f"{url}/{_COORDINATION_DB}{ssl_params}"
     return redis.from_url(connection_string, decode_responses=True)
 
 

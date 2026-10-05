@@ -1,0 +1,9 @@
+# Match the Directus version used by the repository's schema tooling.
+FROM tractr/directus-sync:11.13.4
+COPY start.mjs blob-driver.mjs register-storage.mjs /directus/
+ENV STORAGE_LOCATIONS=blob STORAGE_BLOB_DRIVER=vercel_blob
+ENV HOST=0.0.0.0 PORT=80 TELEMETRY=false DB_CLIENT=pg
+ENV DB_POOL__MIN=0 DB_POOL__MAX=3
+ENV CACHE_ENABLED=false WEBSOCKETS_ENABLED=false
+# Schema bootstrap is a one-off deployment step, never a cold-start operation.
+CMD ["node", "/directus/start.mjs"]

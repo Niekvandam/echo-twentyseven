@@ -1,3 +1,4 @@
+import { APP_ENVIRONMENT } from "@/config";
 import type { LanguageCards } from "../ParticipantOnboardingCards";
 
 type LegalBasis = ParticipantProject["legal_basis"];
@@ -1210,6 +1211,34 @@ export const useOnboardingCards = () => {
 		privacyPolicyUrl?: string | null,
 		organiserName?: string | null,
 	): LanguageCards[string][number] | null => {
+		if (APP_ENVIRONMENT === "twentyseven") {
+			const dutch = lang.startsWith("nl");
+			return {
+				section: "Twentyseven",
+				slides: [
+					{
+						title: dutch
+							? "Over dit testgesprek"
+							: "About this test conversation",
+						content: dutch
+							? "Tijdens de opname stuurt Twentyseven je stem naar ElevenLabs voor live transcriptie. De tekst wordt opgeslagen bij dit gesprek."
+							: "During recording, Twentyseven sends your voice to ElevenLabs for live transcription. The text is saved with this conversation.",
+						extraHelp: dutch
+							? "Dit is een testomgeving. Gebruik testgegevens. Vraag de organisator naar de afspraken over gebruik en bewaartermijn voordat je een echte sessie begint."
+							: "This is a test environment. Use test data. Ask the organiser about data use and retention before starting a real session.",
+						cta: dutch ? "Ik begrijp het" : "I understand",
+						...(privacyPolicyUrl
+							? {
+									link: {
+										label: dutch ? "Privacybeleid" : "Privacy policy",
+										url: privacyPolicyUrl,
+									},
+								}
+							: {}),
+					},
+				],
+			};
+		}
 		if (legalBasis === "client-managed") {
 			return getClientManagedPrivacyCard(lang);
 		}

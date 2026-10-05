@@ -66,14 +66,10 @@ session = boto3.session.Session()
 
 INTERNAL_S3_ENDPOINT = STORAGE_S3_ENDPOINT
 
-if STORAGE_S3_REGION is None:
-    logger.warning("STORAGE_S3_REGION is not set, using 'None'")
-    s3_client = session.client(
-        "s3",
-        endpoint_url=INTERNAL_S3_ENDPOINT,
-        aws_access_key_id=STORAGE_S3_KEY,
-        aws_secret_access_key=STORAGE_S3_SECRET,
-    )
+if settings.storage.provider == "vercel_blob":
+    from dembrane.vercel_blob import VercelBlobClient
+
+    s3_client = VercelBlobClient()
 else:
     s3_client = session.client(
         "s3",
@@ -181,6 +177,14 @@ def generate_presigned_post(
     file_name = get_sanitized_s3_key(file_name)
 
     # Conditions for the upload
+    if settings.storage.provider == "vercel_blob":
+        return {
+            "url": s3_client.sign(file_name, "put", content_type, expires_in_seconds, size_limit_mb * 1024 * 1024),
+            "fields": {},
+            "key": file_name,
+            "method": "PUT",
+        }
+
     conditions = [
         {"acl": "private"},
         {"Content-Type": content_type},

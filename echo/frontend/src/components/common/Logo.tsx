@@ -2,8 +2,8 @@ import { Group, type GroupProps, Loader } from "@mantine/core";
 import aiconlLogo from "@/assets/aiconl-logo.png";
 import aiconlLogoHQ from "@/assets/aiconl-logo-hq.png";
 
-import dembraneLogoFull from "@/assets/dembrane-logo-new.svg";
-import dembraneLogomark from "@/assets/logomark-no-bg.svg";
+const dembraneLogoFull = "/twentyseven-wordmark.svg";
+const dembraneLogomark = "/twentyseven-mark.svg";
 import { APP_ENVIRONMENT } from "@/config";
 import { useWhitelabelLogo } from "@/hooks/useWhitelabelLogo";
 
@@ -25,7 +25,11 @@ export const LogoDembrane = ({
 	const effectiveLogoUrl = alwaysDembrane ? null : logoUrl;
 	// Show an env badge everywhere except production.
 	const hostEnv =
-		hideEnvBadge || APP_ENVIRONMENT === "production" ? null : APP_ENVIRONMENT;
+		hideEnvBadge ||
+		APP_ENVIRONMENT === "production" ||
+		APP_ENVIRONMENT === "twentyseven"
+			? null
+			: APP_ENVIRONMENT;
 
 	return (
 		<Group gap="sm" h="32px" align="center" {...props}>
@@ -38,7 +42,7 @@ export const LogoDembrane = ({
 							effectiveLogoUrl ??
 							(hideTitle ? dembraneLogomark : dembraneLogoFull)
 						}
-						alt="Logo"
+						alt="Twentyseven"
 						className="h-full object-contain"
 					/>
 					{hostEnv && (

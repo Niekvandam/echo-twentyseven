@@ -11,6 +11,8 @@ type ChunkInfo = {
 
 type UseAudioRecorderOptions = {
 	onChunk: (chunk: Blob) => void;
+	onStreamReady?: (stream: MediaStream) => Promise<void>;
+	onStreamStop?: () => void;
 	onRecordingInterrupted?: () => void;
 	deviceId?: string;
 	mimeType?: string;
@@ -64,12 +66,18 @@ export const getSupportedMimeType = () => {
 const defaultMimeType = getSupportedMimeType();
 const useChunkedAudioRecorder = ({
 	onChunk,
+	onStreamReady,
+	onStreamStop,
 	onRecordingInterrupted,
 	deviceId,
 	mimeType = defaultMimeType,
 	timeslice = 30000, // 30 sec
 	debug = false,
 }: UseAudioRecorderOptions): UseAudioRecorderResult => {
+	const readyRef = useRef(onStreamReady);
+	readyRef.current = onStreamReady;
+	const stopRef = useRef(onStreamStop);
+	stopRef.current = onStreamStop;
 	const [isRecording, setIsRecording] = useState(false);
 	const [isStarting, setIsStarting] = useState(false);
 	const [isPaused, setIsPaused] = useState(false);
@@ -354,6 +362,12 @@ const useChunkedAudioRecorder = ({
 					});
 			}
 
+			await readyRef.current?.(stream);
+			if (startToken !== startTokenRef.current) {
+				stream.getTracks().forEach((track) => track.stop());
+				stopRef.current?.();
+				return false;
+			}
 			streamRef.current = stream;
 			log("Access to microphone granted.", { stream });
 
@@ -424,6 +438,7 @@ const useChunkedAudioRecorder = ({
 		} catch (error) {
 			console.error("Error accessing audio stream", error);
 			setPermissionError("Error accessing audio stream");
+			stopRef.current?.();
 			// the ref must be reset too: React batches true -> false into a no-op,
 			// so the sync effect never fires and the guard would swallow every retry
 			isRecordingRef.current = false;
@@ -462,6 +477,7 @@ const useChunkedAudioRecorder = ({
 	};
 
 	const stopRecording = () => {
+		stopRef.current?.();
 		startTokenRef.current += 1;
 		isRecordingRef.current = false;
 		if (

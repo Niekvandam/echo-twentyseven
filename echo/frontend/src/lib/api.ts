@@ -515,6 +515,7 @@ export const uploadConversationChunkWithPresignedUrl = async (payload: {
 	let presignedResponse: {
 		chunk_id: string;
 		upload_url: string;
+		method?: "POST" | "PUT";
 		fields: Record<string, string>;
 		file_url: string;
 	};
@@ -525,6 +526,7 @@ export const uploadConversationChunkWithPresignedUrl = async (payload: {
 			{
 				chunk_id: string;
 				upload_url: string;
+				method?: "POST" | "PUT";
 				fields: Record<string, string>;
 				file_url: string;
 			}
@@ -566,9 +568,17 @@ export const uploadConversationChunkWithPresignedUrl = async (payload: {
 				`[Upload] Uploading to S3 (attempt ${attempt}/${maxRetries})...`,
 			);
 
-			await axios.post(upload_url, formData, {
+			await axios.request({
+				url: upload_url,
+				method: presignedResponse.method ?? "POST",
+				data: presignedResponse.method === "PUT" ? payload.chunk : formData,
 				headers: {
-					// Don't set Content-Type - browser will set it with boundary
+					...(presignedResponse.method === "PUT"
+						? {
+								"Content-Type":
+									payload.chunk.type || "application/octet-stream",
+							}
+						: {}),
 				},
 				onUploadProgress: (progressEvent) => {
 					if (progressEvent.total && payload.onProgress) {
@@ -1698,6 +1708,8 @@ export const getProjectParticipantCount = async (projectId: string) => {
 export const finishConversation = async (conversationId: string) => {
 	return apiNoAuth.post<unknown>(
 		`/participant/conversations/${conversationId}/finish`,
+		undefined,
+		{ timeout: 30000 },
 	);
 };
 

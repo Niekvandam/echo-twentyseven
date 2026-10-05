@@ -552,6 +552,7 @@ class ConversationService:
         file_obj: Optional[UploadFile] = None,
         file_url: Optional[str] = None,
         transcript: Optional[str] = None,
+        chunk_id: Optional[str] = None,
     ) -> dict:
         """
         Create a new conversation chunk.
@@ -604,7 +605,7 @@ class ConversationService:
         if project.get("is_conversation_allowed", False) is False:
             raise ConversationNotOpenForParticipationException()
 
-        chunk_id = generate_uuid()
+        chunk_id = chunk_id or generate_uuid()
 
         needs_upload = file_obj is not None and file_url is None
         if needs_upload:

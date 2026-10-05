@@ -98,7 +98,7 @@ class AsyncDirectusClient:
         if client is None or client.is_closed:
             client = httpx.AsyncClient(
                 base_url=self.url,
-                headers={"Authorization": f"Bearer {self.token}"},
+                headers={"Authorization": f"Bearer {self.token}", **({"x-vercel-protection-bypass": get_settings().directus.automation_bypass} if get_settings().directus.automation_bypass else {})},
                 verify=self._verify,
                 timeout=DEFAULT_TIMEOUT,
             )
